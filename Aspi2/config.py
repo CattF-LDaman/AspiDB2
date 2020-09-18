@@ -1,4 +1,3 @@
-import json
 
 DEFAULT_CONFIG = {
 
@@ -12,6 +11,6 @@ DEFAULT_CONFIG = {
 
 }
 
-def load(b):
+def load(c):
 
-    return { **DEFAULT_CONFIG, **json.loads(b.decode('utf-8')) }
+    return { **DEFAULT_CONFIG, **c }

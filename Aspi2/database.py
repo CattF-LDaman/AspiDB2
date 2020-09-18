@@ -8,6 +8,29 @@ from . import math_utils
 from . import config
 from . import structure
 
+def build(location,name,struc,slots=1024,max_key_length=64,index_size_bytes=12):
+
+    with open(location,"wb") as f:
+
+        f.write(MAGIC_NUM)
+
+        f.write(len(name.encode('utf-8')))
+        f.write(name.encode('utf-8'))
+
+        f.write(VERSION.to_bytes(3,'little'))
+
+        f.write(max_key_length.to_bytes(2,'little'))
+        f.write(index_size_bytes.to_bytes(1,'little'))
+
+        c_struc = structure.compile_structure(struc).encode('utf-8')
+        f.write(len(c_struc).to_bytes(4,'little'))
+        f.write(c_struc)
+
+        f.write(slots.to_bytes(12,'little'))
+
+        f.seek(slots*(index_size_bytes+1),1)
+        f.write(b"\x00")
+
 DB_KEYVALUE = 0
 DB_LIST = 1
 
@@ -22,7 +45,7 @@ IO_WHENCE_END = 2
 
 class Database:
 
-    def __init__(self,location):
+    def __init__(self,location,db_config = {}):
 
         self.location = location
 
@@ -37,9 +60,7 @@ class Database:
                 raise WrongMagicNum("Didn't find magic number at beginning of file at location")
 
             dbn_len = db_f.read(4)
-            self.name = db_f.read(int.from_bytes(dbn_len,'little'))
-
-            self.type = int.from_bytes(db_f.read(1),'little')
+            self.name = db_f.read(int.from_bytes(dbn_len,'little')).decode('utf-8')
 
             self.version = int.from_bytes(db_f.read(3),'little')
 
@@ -53,10 +74,7 @@ class Database:
 
             self._slotsize = 1 + self.indexsize # occupance info (1B) + index
 
-            conf_size = int.from_bytes(dbf.read(2),'little')
-            self.config_location = db_f.tell()
-            conf_bytes = conf_size.read(conf_size)
-            self.config = config.load(conf_bytes)
+            self.config = config.load(db_config)
 
             self._slots = int.from_bytes(db_f.read(12),'little')
 
@@ -71,7 +89,7 @@ class Database:
         self.logger = logging_utils.Logger(self.name, self.config['logger_directory'], self.config["logger_enabled"], self.config["logger_print_enabled"], self.config["logger_print_level"])
         self.log = self.logger.log
 
-        self.log(f"Database ' {self.name} ' initialised with version ' {self.version} ' ,  structure of size {len(self.structure)} ( {len(self.structure/1024/1024)} mb ), at most {int(2**(self.indexsize*8)/self.entry_size)} entries possible.")
+        self.log(f"Database ' {self.name} ' initialised with version ' {self.version} ' (Client version is ' {VERSION} '),  structure of size {len(self.structure)} ( {len(self.structure/1024/1024)} mb ), at most {int(2**(self.indexsize*8)/self.entry_size)} entries possible.")
 
     def get_slot(self,key):
 
