@@ -55,6 +55,10 @@ class Structure:
 
         valuedata = fileobj.read(valuelen)
 
+        fileobj.seek(-valuelen,1)
+
+        print(valuedata)
+
         return vdatatype.fetch(valuedata)
 
     def get_value_offset(self,valuename):

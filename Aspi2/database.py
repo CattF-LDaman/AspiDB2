@@ -438,6 +438,47 @@ class Accessor:
 
                             cur_dataindex = collided_index
 
+    def find(self,entryvalue,operator,queryvalue,findmode="all"):
+
+        start_pos = self.db.data_location
+
+        v_offset = self.db.structure.get_value_offset(entryvalue)
+
+        self._file.seek(start_pos)
+
+        ks = []
+
+        while True:
+
+            begin = self._file.tell()
+
+            oi = self._file.read(1)
+
+            self._file.seek(begin+1+self.db.indexsize+self.db.keysize_bytesize+self.db.keysize+v_offset)
+
+            v = self.db.structure.fetch_value_here(entryvalue, self._file)
+
+            self._file.seek(begin+1+self.db.indexsize)
+            kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+            k = self._file.read(kl).decode('ascii')
+
+            print(k,v)
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                if findmode == "all":
+                    ks.append(k)
+                else:
+                    return k
+
+            self._file.seek(begin)
+            self._file.seek(self.db.entry_size,1)
+
+            if self._file.tell() >= int(os.path.getsize(self.db.location))-1:
+
+                break
+
+        return ks
+
 class WrongMagicNum(Exception):
 
     pass
