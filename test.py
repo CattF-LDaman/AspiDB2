@@ -13,10 +13,12 @@ def test():
     db_accessor.set("jsmith",{"firstname":"John","lastname":"Smith","age":35})
 
     print(db_accessor.get("jsmith"))
+    print(db_accessor.has("jsmith"))
 
     db_accessor.delete("jsmith")
 
     print(db_accessor.get("jsmith"))
+    print(db_accessor.has("jsmith"))
 
 if __name__ == "__main__":
 

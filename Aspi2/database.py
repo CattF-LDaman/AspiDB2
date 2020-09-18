@@ -196,7 +196,6 @@ class Accessor:
 
                             cur_dataindex = collided_index
 
-
     def set(self,key,data):
 
         self.db.log(f"SET {key}")
@@ -361,6 +360,81 @@ class Accessor:
                             if collided_index == o_dataindex: # To evade infinite looping
 
                                 return None
+
+                            cur_dataindex = collided_index
+
+    def has(self,key):
+
+        self.db.log(f"HAS {key}")
+
+        slot_index = self.db.get_slot_index(key)
+
+        self._file.seek(slot_index)
+        occupance_info = self._file.read(1)
+        self._file.seek(slot_index)
+
+        if occupance_info == OCCUPANCE_NOT_OCCUPIED:
+
+            return False
+
+        elif occupance_info == OCCUPANCE_OCCUPIED:
+
+            self._file.seek(1,1)
+
+            o_dataindex = int.from_bytes(self._file.read(self.db.indexsize),'little')
+
+            self._file.seek(self.db.data_location+o_dataindex)
+
+            data_occupance_info =  self._file.read(1)
+
+            if data_occupance_info == OCCUPANCE_NOT_OCCUPIED:
+
+                return False
+
+            elif data_occupance_info in [OCCUPANCE_OCCUPIED_COLLIDED,OCCUPANCE_OCCUPIED,OCCUPANCE_NOT_OCCUPIED_COLLIDED]:
+
+                cur_dataindex = o_dataindex
+
+                while True:
+
+                    self._file.seek(self.db.data_location+cur_dataindex)
+
+                    data_occupance_info =  self._file.read(1)
+
+                    collided_index = int.from_bytes(self._file.read(self.db.indexsize),'little')
+
+                    key_r_len = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+                    key_r = self._file.read(self.db.keysize)[:key_r_len].decode('ascii')
+
+                    if key_r == key:
+
+                        if data_occupance_info in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                            return True
+
+                        else:
+
+                            return False
+
+                    else:
+
+                        if data_occupance_info == OCCUPANCE_OCCUPIED_COLLIDED:
+
+                            cur_dataindex = collided_index
+
+                        elif data_occupance_info == OCCUPANCE_NOT_OCCUPIED:
+
+                            return False
+
+                        elif data_occupance_info == OCCUPANCE_OCCUPIED:
+
+                            return False
+
+                        elif data_occupance_info == OCCUPANCE_NOT_OCCUPIED_COLLIDED:
+
+                            if collided_index == o_dataindex: # To evade infinite looping
+
+                                return False
 
                             cur_dataindex = collided_index
 
