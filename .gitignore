@@ -1,5 +1,7 @@
 #Project
 .DS_Store/
+TestDB.asp2
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
