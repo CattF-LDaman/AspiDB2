@@ -5,6 +5,7 @@ import hashlib
 from . import MAGIC_NUM,VERSION
 from . import logging_utils
 from . import math_utils
+from . import find_operators
 from . import config
 from . import structure
 
@@ -440,11 +441,38 @@ class Accessor:
 
     def find(self,entryvalue,operator,queryvalue,findmode="all"):
 
+        """
+        Operator is either one of the default operators: has / contains, in, equal to / equal, not equal to, endswith, startswith, less than, greater than, modulo
+        OR
+        a callable function taking 2 arguments: value1, value2 -> value1 being the value found in the database and value2 the provided value.
+        The function should return a boolean.
+
+        Default operators like less than compare found value with provided value
+        eg. You're looking for all posts with less than 20 likes
+                db.find("likes","less than",20)
+
+        Some symbol versions of the operators are also included like: %, <, >, <=, == or = , ...
+
+        This also means that the ' in ' operator doesn't check wether the provided value is in the value in the database but it checks wether the database value is in the provided value.
+        eg. You're checking if a book title is in a list of books
+                db.find("title","in",["The Lord of The Rings","The Hobbit","Guide to Programming: Vol. 1"])
+
+        Keep in mind that the find function doesn't check for datatypes so checking if a string value is less than something (or reversed) will raise an error
+
+        There are 2 findmodes:
+        ' all ' : returns a list of all valid keys
+        ' first ' : returns first valid key (not neccecarily in order of insertion) or None
+
+        Returns a list of keys
+        """
+
+        op = find_operators.default[operator.strip().lower()] if operator.strip().lower() in find_operators.default else operator
+
         start_pos = self.db.data_location
 
         v_offset = self.db.structure.get_value_offset(entryvalue)
 
-        self._file.seek(start_pos)
+        self._file.seek(start_pos+1)
 
         ks = []
 
@@ -454,21 +482,22 @@ class Accessor:
 
             oi = self._file.read(1)
 
-            self._file.seek(begin+1+self.db.indexsize+self.db.keysize_bytesize+self.db.keysize+v_offset)
-
-            v = self.db.structure.fetch_value_here(entryvalue, self._file)
-
-            self._file.seek(begin+1+self.db.indexsize)
-            kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
-            k = self._file.read(kl).decode('ascii')
-
-            print(k,v)
             if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
 
-                if findmode == "all":
-                    ks.append(k)
-                else:
-                    return k
+                self._file.seek(begin+1+self.db.indexsize+self.db.keysize_bytesize+self.db.keysize+v_offset)
+
+                v = self.db.structure.fetch_value_here(entryvalue, self._file)
+
+                if op(v,queryvalue):
+
+                    self._file.seek(begin+1+self.db.indexsize)
+                    kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+                    k = self._file.read(kl).decode('ascii')
+
+                    if findmode == "all":
+                        ks.append(k)
+                    else:
+                        return k
 
             self._file.seek(begin)
             self._file.seek(self.db.entry_size,1)
@@ -477,7 +506,52 @@ class Accessor:
 
                 break
 
-        return ks
+        return ks if findmode == "all" else None
+
+    def find_generator(self,entryvalue,operator,queryvalue):
+
+        """
+
+        Same as Accessor.find except findmode obviously doesn't apply
+
+        """
+
+        op = find_operators.default[operator.strip()] if operator.strip() in find_operators.default else operator
+
+        start_pos = self.db.data_location
+
+        v_offset = self.db.structure.get_value_offset(entryvalue)
+
+        self._file.seek(start_pos+1)
+
+        ks = []
+
+        while True:
+
+            begin = self._file.tell()
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                self._file.seek(begin+1+self.db.indexsize+self.db.keysize_bytesize+self.db.keysize+v_offset)
+
+                v = self.db.structure.fetch_value_here(entryvalue, self._file)
+
+                if op(v,queryvalue):
+
+                    self._file.seek(begin+1+self.db.indexsize)
+                    kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+                    k = self._file.read(kl).decode('ascii')
+
+                    yield k
+
+            self._file.seek(begin)
+            self._file.seek(self.db.entry_size,1)
+
+            if self._file.tell() >= int(os.path.getsize(self.db.location))-1:
+
+                break
 
 class WrongMagicNum(Exception):
 
