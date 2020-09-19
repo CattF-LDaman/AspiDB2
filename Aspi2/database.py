@@ -454,7 +454,7 @@ class Accessor:
         Some symbol versions of the operators are also included like: %, <, >, <=, == or = , ...
 
         This also means that the ' in ' operator doesn't check wether the provided value is in the value in the database but it checks wether the database value is in the provided value.
-        eg. You're checking if a book title is in a list of books
+        eg. You're looking for all entries whose title is in a list of books
                 db.find("title","in",["The Lord of The Rings","The Hobbit","Guide to Programming: Vol. 1"])
 
         Keep in mind that the find function doesn't check for datatypes so checking if a string value is less than something (or reversed) will raise an error
