@@ -708,7 +708,10 @@ class Accessor:
             cur_pos += self.db.entry_size
             self._file.seek(cur_pos)
 
-        return collided/(not_collided+collided)
+        try:
+            return (1-collided/(not_collided+collided))*100
+        except ZeroDivisionError:
+            return 100
 
 class WrongMagicNum(Exception):
 
