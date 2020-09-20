@@ -2,6 +2,7 @@
 from . import datatypes
 
 import json
+import io
 import math
 from inspect import getargs
 import bitarray
@@ -21,11 +22,58 @@ def validate_structure(struc:tuple):
 
 def compile_structure(struc):
 
-    return json.dumps(struc)
+    o = b""
 
-def load_structure(jsondata):
+    o += len(struc).to_bytes(4, "little")
+    for keyname,datatype,arguments,nullable in struc:
 
-    return Structure(tuple(json.loads(jsondata)))
+        o += len(keyname.encode('ascii')).to_bytes(2,'little')
+        o += keyname.encode('ascii')
+        o += len(datatype.encode('ascii')).to_bytes(1,'little')
+        o += datatype.encode('ascii')
+        o += len(arguments).to_bytes(1, "little")
+        for arg,val in arguments.items():
+            o += len(arg).to_bytes(1, "little")
+            o += arg.encode("ascii")
+            valenc = json.dumps(val).encode('utf-8')
+            o += len(valenc).to_bytes(2,"little")
+            o += valenc
+        o += b"\x01" if nullable else b"\x00"
+
+    return o
+
+def load_structure(bstruc):
+
+    o = []
+    b = io.BytesIO(bstruc)
+
+    for _ in range(int.from_bytes(b.read(4),'little')):
+
+        do = []
+
+        knl = int.from_bytes(b.read(2),'little')
+        do.append(b.read(knl).decode('ascii'))
+
+        dtl = int.from_bytes(b.read(1),'little')
+        do.append(b.read(dtl).decode('ascii'))
+
+        args = {}
+        arg_amount = int.from_bytes(b.read(1),'little')
+        for _ in range(arg_amount):
+
+            arglen = int.from_bytes(b.read(1),'little')
+            arg = b.read(arglen).decode('ascii')
+
+            vall = int.from_bytes(b.read(2),'little')
+            val = json.loads(b.read(vall).decode('utf-8'))
+
+            args[arg] = val
+        do.append(args)
+        do.append(True if b.read(1) == b"\x01" else False)
+
+        o.append(do)
+
+    return Structure(tuple(o))
 
 class Structure:
 

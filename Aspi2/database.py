@@ -23,7 +23,7 @@ def build(location,name,struc,slots=1024,max_key_length=64,index_size_bytes=12):
         f.write(max_key_length.to_bytes(2,'little'))
         f.write(index_size_bytes.to_bytes(1,'little'))
 
-        c_struc = structure.compile_structure(struc).encode('utf-8')
+        c_struc = structure.compile_structure(struc)
         f.write(len(c_struc).to_bytes(4,'little'))
         f.write(c_struc)
 
@@ -71,7 +71,7 @@ class Database:
 
             struc_size = int.from_bytes(db_f.read(4),'little')
             struc_bytes  = db_f.read(struc_size)
-            self.structure = structure.load_structure(struc_bytes.decode('utf-8'))
+            self.structure = structure.load_structure(struc_bytes)
 
             self._slotsize = 1 + self.indexsize # occupance info (1B) + index
 
