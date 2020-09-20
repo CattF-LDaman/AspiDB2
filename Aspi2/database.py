@@ -110,6 +110,21 @@ class Accessor:
 
         self._file =  open(self.db.location,"rb+")
 
+    @property
+    def all_keys(self):
+
+        return list(self.keys())
+
+    @property
+    def all_values(self):
+
+        return list(self.values())
+
+    @property
+    def all_items(self):
+
+        return list(self.items())
+
     def _write_data_at(self,index,key,data,collider=None):
 
         self._file.seek(self.db.data_location+index)
@@ -122,7 +137,7 @@ class Accessor:
 
     def delete(self,key):
 
-        self.db.log(f"DELETE {key}")
+        self.db.log(f"DELETE {key}","DEBUG")
 
         slot_index = self.db.get_slot_index(key)
 
@@ -199,7 +214,7 @@ class Accessor:
 
     def set(self,key,data):
 
-        self.db.log(f"SET {key}")
+        self.db.log(f"SET {key}","DEBUG")
 
         comp_data = self.db.structure.compile(data)
 
@@ -291,7 +306,7 @@ class Accessor:
 
     def get(self,key):
 
-        self.db.log(f"GET {key}")
+        self.db.log(f"GET {key}","DEBUG")
 
         slot_index = self.db.get_slot_index(key)
 
@@ -366,7 +381,7 @@ class Accessor:
 
     def has(self,key):
 
-        self.db.log(f"HAS {key}")
+        self.db.log(f"HAS {key}","DEBUG")
 
         slot_index = self.db.get_slot_index(key)
 
@@ -441,6 +456,10 @@ class Accessor:
 
     def find(self,entryvalue,operator,queryvalue,findmode="all"):
 
+        self.db.log(f"FIND {findmode.upper().strip()} ENTRY(/-IES) WHERE {entryvalue} {operator} {queryvalue}","DEBUG")
+
+        findmode = findmode.lower().strip()
+
         """
         Operator is either one of the default operators: has / contains, in, equal to / equal, not equal to, endswith, startswith, less than, greater than, modulo
         OR
@@ -468,15 +487,15 @@ class Accessor:
 
         op = find_operators.default[operator.strip().lower()] if operator.strip().lower() in find_operators.default else operator
 
-        start_pos = self.db.data_location
+        start_pos = self.db.data_location+1
 
         v_offset = self.db.structure.get_value_offset(entryvalue)
 
-        self._file.seek(start_pos+1)
+        self._file.seek(start_pos)
 
         ks = []
 
-        while True:
+        while self._file.tell() >= int(os.path.getsize(self.db.location))-1:
 
             begin = self._file.tell()
 
@@ -502,13 +521,12 @@ class Accessor:
             self._file.seek(begin)
             self._file.seek(self.db.entry_size,1)
 
-            if self._file.tell() >= int(os.path.getsize(self.db.location))-1:
-
-                break
 
         return ks if findmode == "all" else None
 
     def find_generator(self,entryvalue,operator,queryvalue):
+
+        self.db.log(f"FIND ALL ENTRIES WHERE {entryvalue} {operator} {queryvalue}","DEBUG")
 
         """
 
@@ -518,15 +536,15 @@ class Accessor:
 
         op = find_operators.default[operator.strip()] if operator.strip() in find_operators.default else operator
 
-        start_pos = self.db.data_location
+        start_pos = self.db.data_location+1
 
         v_offset = self.db.structure.get_value_offset(entryvalue)
 
-        self._file.seek(start_pos+1)
+        self._file.seek(start_pos)
 
         ks = []
 
-        while True:
+        while self._file.tell() >= int(os.path.getsize(self.db.location))-1:
 
             begin = self._file.tell()
 
@@ -549,9 +567,148 @@ class Accessor:
             self._file.seek(begin)
             self._file.seek(self.db.entry_size,1)
 
-            if self._file.tell() >= int(os.path.getsize(self.db.location))-1:
+    def keys(self):
 
-                break
+        self.db.log("KEYS","DEBUG")
+
+        start_pos = self.db.data_location+1
+
+        self._file.seek(start_pos)
+
+        cur_pos = start_pos
+
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                self._file.seek(self.db.indexsize,1)
+
+                kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+                k = self._file.read(kl).decode('ascii')
+
+                yield k
+
+            cur_pos += self.db.entry_size
+            self._file.seek(cur_pos)
+
+    def values(self):
+
+        self.db.log("VALUES","DEBUG")
+
+        start_pos = self.db.data_location+1
+
+        self._file.seek(start_pos)
+
+        cur_pos = start_pos
+
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                self._file.seek(self.db.indexsize,1)
+
+
+                self._file.seek(self.db.keysize_bytesize+self.db.keysize,1)
+
+                v = self.db.structure.fetch(self._file.read(len(self.db.structure)))
+
+                yield v
+
+            cur_pos += self.db.entry_size
+            self._file.seek(cur_pos)
+
+    def items(self):
+
+        self.db.log("ITEMS","DEBUG")
+
+        start_pos = self.db.data_location+1
+
+        self._file.seek(start_pos)
+
+        cur_pos = start_pos
+
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                self._file.seek(self.db.indexsize,1)
+
+                kl = int.from_bytes(self._file.read(self.db.keysize_bytesize),'little')
+                k = self._file.read(kl).decode('ascii')
+
+                self._file.seek(self.db.keysize-kl,1)
+                v = self.db.structure.fetch(self._file.read(len(self.db.structure)))
+
+                yield (k,v)
+
+            cur_pos += self.db.entry_size
+            self._file.seek(cur_pos)
+
+    def __len__(self):
+
+        self.db.log("LENGTH","DEBUG")
+
+        start_pos = self.db.data_location+1
+
+        self._file.seek(start_pos)
+
+        cur_pos = start_pos
+
+        length = 0
+
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED,OCCUPANCE_OCCUPIED_COLLIDED]:
+
+                length += 1
+
+            cur_pos += self.db.entry_size
+            self._file.seek(cur_pos)
+
+        return length
+
+    @property
+    def length(self):
+
+        return len(self)
+
+    def health(self):
+
+        self.db.log("HEALTH","DEBUG")
+
+        start_pos = self.db.data_location+1
+
+        self._file.seek(start_pos)
+
+        cur_pos = start_pos
+
+        collided = 0
+        not_collided = 0
+
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
+
+            oi = self._file.read(1)
+
+            if oi in [OCCUPANCE_OCCUPIED_COLLIDED,OCCUPANCE_NOT_OCCUPIED_COLLIDED]:
+
+                collided += 1
+
+            else:
+
+                not_collided += 1
+
+            cur_pos += self.db.entry_size
+            self._file.seek(cur_pos)
+
+        return collided/(not_collided+collided)
 
 class WrongMagicNum(Exception):
 
