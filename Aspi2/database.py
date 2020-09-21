@@ -87,7 +87,7 @@ class Database:
 
         self.entry_size = 1+self.indexsize+self.keysize_bytesize+self.keysize+len(self.structure)
 
-        self.logger = logging_utils.Logger(self.name, self.config['logger_directory'], self.config["logger_enabled"], self.config["logger_print_enabled"], self.config["logger_print_level"])
+        self.logger = logging_utils.Logger(self.name, self.config['logger_directory'].format(dbname=self.name), self.config["logger_enabled"], self.config["logger_print_enabled"], self.config["logger_print_level"])
         self.log = self.logger.log
 
         self.log(f"Database ' {self.name} ' initialised with version ' {self.version} ' (Client version is ' {VERSION} '),  structure of size {len(self.structure)} ( {len(self.structure)/1024/1024} mb ), at most {int(2**(self.indexsize*8)/self.entry_size)} entries possible.")
@@ -100,6 +100,15 @@ class Database:
 
         return self.indices_location + self.get_slot(key) * self._slotsize
 
+    def rescale(self):
+
+        pass
+
+    @property
+    def health(self):
+
+        return Accessor(self).health()
+
 class Accessor:
 
     def __init__(self,database):
@@ -110,17 +119,14 @@ class Accessor:
 
         self._file =  open(self.db.location,"rb+")
 
-    @property
     def all_keys(self):
 
         return list(self.keys())
 
-    @property
     def all_values(self):
 
         return list(self.values())
 
-    @property
     def all_items(self):
 
         return list(self.items())
@@ -680,6 +686,7 @@ class Accessor:
 
         return len(self)
 
+    @property
     def health(self):
 
         self.db.log("HEALTH","DEBUG")
