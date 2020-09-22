@@ -32,9 +32,6 @@ def build(location,name,struc,slots=1024,max_key_length=64,index_size_bytes=12):
         f.seek(slots*(index_size_bytes+1),1)
         f.write(b"\x00")
 
-DB_KEYVALUE = 0
-DB_LIST = 1
-
 OCCUPANCE_NOT_OCCUPIED = b"\x00"
 OCCUPANCE_OCCUPIED = b"\x01"
 OCCUPANCE_NOT_OCCUPIED_COLLIDED = b"\x02"
