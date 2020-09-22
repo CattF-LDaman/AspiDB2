@@ -104,7 +104,12 @@ class Database:
     @property
     def health(self):
 
-        return Accessor(self).health()
+        return Accessor(self).health
+
+    @property
+    def __len__(self):
+
+        return len(Accessor(self))
 
 class Accessor:
 
@@ -498,7 +503,7 @@ class Accessor:
 
         ks = []
 
-        while self._file.tell() >= int(os.path.getsize(self.db.location))-1:
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
 
             begin = self._file.tell()
 
@@ -547,7 +552,7 @@ class Accessor:
 
         ks = []
 
-        while self._file.tell() >= int(os.path.getsize(self.db.location))-1:
+        while self._file.tell() <= int(os.path.getsize(self.db.location))-1:
 
             begin = self._file.tell()
 

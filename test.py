@@ -91,6 +91,38 @@ def extra_test():
         print(len(db_accessor))
         print(db_accessor.health())
 
+def large_test():
+
+    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+
+    database.build("TestDB.asp2", "TestDB", test_struc, 11000)
+
+    db = database.Database("TestDB.asp2")
+
+    db_accessor  = database.Accessor(db)
+
+    def rnd_string(slen):
+
+        return "".join(random.choice(list("abcdefghijklmnopqrstuvwxyz1234567890")) for _ in range(slen))
+
+    for _ in range(5000):
+
+        db_accessor.set(rnd_string(32),{"firstname":rnd_string(32),"lastname":rnd_string(64),"age":random.randint(0, 100)})
+    print("Done adding 5000 users.")
+
+    db_accessor.set("jsmith",{"firstname":"John","lastname":"Smith","age":35})
+    print("Done adding John")
+
+    for _ in range(5000):
+
+        db_accessor.set(rnd_string(32),{"firstname":rnd_string(32),"lastname":rnd_string(64),"age":random.randint(0, 100)})
+    print("Done adding 5000 users.")
+
+    print(db.health, len(db_accessor))
+    print(db_accessor.get("jsmith"))
+
+    print(db_accessor.find("firstname", "has", "Joh"))
+
 if __name__ == "__main__":
 
-    extra_test()
+    large_test()
