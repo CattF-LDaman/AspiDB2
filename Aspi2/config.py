@@ -6,7 +6,8 @@ DEFAULT_CONFIG = {
     "logger_print_enabled":True,
     "logger_print_level":"INFO",
 
-    "rescale_backup_directory":"{dbname}_backups"
+    "rescale_backups":True,
+    "backup_directory":"{dbname}_backups"
 }
 
 def load(c):

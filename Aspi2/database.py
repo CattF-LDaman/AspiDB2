@@ -1,6 +1,8 @@
 
 import os
 import hashlib
+import time
+import shutil
 
 from . import MAGIC_NUM,VERSION
 from . import logging_utils
@@ -74,11 +76,11 @@ class Database:
 
             self.config = config.load(db_config)
 
-            self._slots = int.from_bytes(db_f.read(12),'little')
+            self.slots = int.from_bytes(db_f.read(12),'little')
 
             self.indices_location = db_f.tell()
 
-            db_f.seek(self._slots*self._slotsize,IO_WHENCE_RELATIVE)
+            db_f.seek(self.slots*self._slotsize,IO_WHENCE_RELATIVE)
 
             self.data_location = db_f.tell()
 
@@ -91,22 +93,70 @@ class Database:
 
     def get_slot(self,key):
 
-        return int.from_bytes(hashlib.sha1(key.encode('ascii')).digest(),'little') % self._slots
+        return int.from_bytes(hashlib.sha1(key.encode('ascii')).digest(),'little') % self.slots
 
     def get_slot_index(self,key):
 
         return self.indices_location + self.get_slot(key) * self._slotsize
 
-    def rescale(self):
+    def backup(self,backup_identifier="manual"):
 
-        pass
+        if not os.path.exists(self.config["backup_directory"]):
+
+            os.makedirs(self.config["backup_directory"],exist_ok=True)
+            self.log(f"Made new directory ' {self.config["backup_directory"]} '")
+
+        shutil.copyfile(self.location, os.path.join(self.config["backup_directory"],f"backup_{backup_identifier}_{int(time.time())}_{self.slots}.asp2"))
+
+    def rescale(self,new_slot_amount=None):
+
+        self.log("RESCALE")
+
+        rescale_start_time = time.time()
+
+        health_before = self.health
+
+        rescale_job_id = f"{int(rescale_start_time)}&{os.urandom(6).hex()}"
+
+        db_len = len(self)
+        target_slots = 1<<(db_len-1).bit_length()*4 if not new_slot_amount else new_slot_amount # New slot amount is next power of two starting from current db length times four
+
+        if target_slots == self.slots:
+            self.log("RESCALE: Rescale cancelled. Already at target slot amount.")
+            return
+
+        self.log(f"RESCALE: New slot amount will be {target_slots} slots")
+
+        rescale_db_path = f"rescale_{rescale_job_id}.rasp2"
+
+        build(rescale_db_path, self.name, target_slots, self.keysize, index_size_bytes)
+
+        rescale_db = Database(rescale_db_path, {"logger_enabled":False})
+        rescale_db_accessor = Accessor(rescale_db)
+        db_accessor = Accessor(self)
+
+        for k,v in db_accessor.items():
+
+            rescale_db_accessor.set(k,v)
+
+        if self.config["rescale_backups"]:
+
+            self.log("RESCALE: Backing up...")
+            self.backup("rescale")
+            self.log("RESCALE: Done backing up!")
+
+        db_accessor.close()
+        rescale_db_accessor.close()
+
+        self.log("RESCALE: Overwriting current db")
+        shutil.copyfile(rescale_db_path,self.location)
+        shutil
 
     @property
     def health(self):
 
         return Accessor(self).health
 
-    @property
     def __len__(self):
 
         return len(Accessor(self))
@@ -120,6 +170,13 @@ class Accessor:
         self.db.log("Accessor created.")
 
         self._file =  open(self.db.location,"rb+")
+
+        self.closed = False
+
+    def close(self):
+
+        self.closed = True
+        self._file.close()
 
     def all_keys(self):
 
