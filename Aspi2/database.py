@@ -101,12 +101,12 @@ class Database:
 
     def backup(self,backup_identifier="manual"):
 
-        if not os.path.exists(self.config["backup_directory"]):
+        if not os.path.exists(self.config["backup_directory"].format(dbname=self.name)):
 
-            os.makedirs(self.config["backup_directory"],exist_ok=True)
-            self.log(f"Made new directory ' {self.config["backup_directory"]} '")
+            os.makedirs(self.config["backup_directory"].format(dbname=self.name),exist_ok=True)
+            self.log(f"Made new directory ' {self.config["backup_directory"].format(dbname=self.name)} '")
 
-        shutil.copyfile(self.location, os.path.join(self.config["backup_directory"],f"backup_{backup_identifier}_{int(time.time())}_{self.slots}.asp2"))
+        shutil.copyfile(self.location, os.path.join(self.config["backup_directory"].format(dbname=self.name),f"backup_{backup_identifier}_{int(time.time())}_{self.slots}.asp2"))
 
     def rescale(self,new_slot_amount=None):
 
@@ -150,7 +150,9 @@ class Database:
 
         self.log("RESCALE: Overwriting current db")
         shutil.copyfile(rescale_db_path,self.location)
-        shutil
+
+        self.log("RESCALE: Deleting rescale db")
+        os.remove(rescale_db_path)
 
     @property
     def health(self):
