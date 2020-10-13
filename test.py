@@ -121,7 +121,9 @@ def large_test():
     print(db.health, len(db_accessor))
     print(db_accessor.get("jsmith"))
 
-    print(db_accessor.find("firstname", "has", "Joh"))
+    print(db_accessor.find("firstname", "has", "Jo"))
+
+    db.rescale()
 
 if __name__ == "__main__":
 

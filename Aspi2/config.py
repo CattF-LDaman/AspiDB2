@@ -7,7 +7,9 @@ DEFAULT_CONFIG = {
     "logger_print_level":"INFO",
 
     "rescale_backups":True,
-    "backup_directory":"{dbname}_backups"
+    "backup_directory":"{dbname}_backups",
+
+    "max_cache_size":1024*1024
 }
 
 def load(c):

@@ -42,36 +42,42 @@ def compile_structure(struc):
 
     return o
 
+def decompile_struc(bstruc):
+
+        o = []
+        b = io.BytesIO(bstruc)
+
+        for _ in range(int.from_bytes(b.read(4),'little')):
+
+            do = []
+
+            knl = int.from_bytes(b.read(2),'little')
+            do.append(b.read(knl).decode('ascii'))
+
+            dtl = int.from_bytes(b.read(1),'little')
+            do.append(b.read(dtl).decode('ascii'))
+
+            args = {}
+            arg_amount = int.from_bytes(b.read(1),'little')
+            for _ in range(arg_amount):
+
+                arglen = int.from_bytes(b.read(1),'little')
+                arg = b.read(arglen).decode('ascii')
+
+                vall = int.from_bytes(b.read(2),'little')
+                val = json.loads(b.read(vall).decode('utf-8'))
+
+                args[arg] = val
+            do.append(args)
+            do.append(True if b.read(1) == b"\x01" else False)
+
+            o.append(do)
+
+        return tuple(o)
+
 def load_structure(bstruc):
 
-    o = []
-    b = io.BytesIO(bstruc)
-
-    for _ in range(int.from_bytes(b.read(4),'little')):
-
-        do = []
-
-        knl = int.from_bytes(b.read(2),'little')
-        do.append(b.read(knl).decode('ascii'))
-
-        dtl = int.from_bytes(b.read(1),'little')
-        do.append(b.read(dtl).decode('ascii'))
-
-        args = {}
-        arg_amount = int.from_bytes(b.read(1),'little')
-        for _ in range(arg_amount):
-
-            arglen = int.from_bytes(b.read(1),'little')
-            arg = b.read(arglen).decode('ascii')
-
-            vall = int.from_bytes(b.read(2),'little')
-            val = json.loads(b.read(vall).decode('utf-8'))
-
-            args[arg] = val
-        do.append(args)
-        do.append(True if b.read(1) == b"\x01" else False)
-
-        o.append(do)
+    o = decompile_struc(bstruc)
 
     return Structure(tuple(o))
 

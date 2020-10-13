@@ -63,14 +63,6 @@ def greaterthan(value1,value2):
 
     return False
 
-def modulo(value1,value2):
-
-    if value1 % value2:
-
-        return True
-
-    return False
-
 def lessthanequal(value1,value2):
 
     if value1 <= value2:
@@ -108,12 +100,10 @@ default = {
     "greater": greaterthan,
     "greater than": greaterthan,
     "greatherthan": greaterthan,
-    "modulo": modulo,
     ">":greaterthan,
     "<":lessthan,
     "==":equal,
     "=":equal,
-    "%":modulo,
     "<=":lessthanequal,
     ">=":greaterthanequal,
     "less than or equal to":lessthanequal,

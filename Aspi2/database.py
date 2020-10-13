@@ -10,6 +10,7 @@ from . import math_utils
 from . import find_operators
 from . import config
 from . import structure
+from . import caching
 
 def build(location,name,struc,slots=1024,max_key_length=64,index_size_bytes=12):
 
@@ -70,6 +71,7 @@ class Database:
 
             struc_size = int.from_bytes(db_f.read(4),'little')
             struc_bytes  = db_f.read(struc_size)
+            self._struc_raw = structure.decompile_struc(struc_bytes)
             self.structure = structure.load_structure(struc_bytes)
 
             self._slotsize = 1 + self.indexsize # occupance info (1B) + index
@@ -89,6 +91,8 @@ class Database:
         self.logger = logging_utils.Logger(self.name, self.config['logger_directory'].format(dbname=self.name), self.config["logger_enabled"], self.config["logger_print_enabled"], self.config["logger_print_level"])
         self.log = self.logger.log
 
+        self.accessors = []
+
         self.log(f"Database ' {self.name} ' initialised with version ' {self.version} ' (Client version is ' {VERSION} '),  structure of size {len(self.structure)} ( {len(self.structure)/1024/1024} mb ), at most {int(2**(self.indexsize*8)/self.entry_size)} entries possible.")
 
     def get_slot(self,key):
@@ -104,13 +108,21 @@ class Database:
         if not os.path.exists(self.config["backup_directory"].format(dbname=self.name)):
 
             os.makedirs(self.config["backup_directory"].format(dbname=self.name),exist_ok=True)
-            self.log(f"Made new directory ' {self.config["backup_directory"].format(dbname=self.name)} '")
+            self.log(f"Made new directory ' {self.config['backup_directory'].format(dbname=self.name)} '")
 
         shutil.copyfile(self.location, os.path.join(self.config["backup_directory"].format(dbname=self.name),f"backup_{backup_identifier}_{int(time.time())}_{self.slots}.asp2"))
+
+    def close_all_accessors(self):
+
+        for a in self.accessors:
+
+            a.close()
 
     def rescale(self,new_slot_amount=None):
 
         self.log("RESCALE")
+
+        self.close_all_accessors()
 
         rescale_start_time = time.time()
 
@@ -119,8 +131,7 @@ class Database:
         rescale_job_id = f"{int(rescale_start_time)}&{os.urandom(6).hex()}"
 
         db_len = len(self)
-        target_slots = 1<<(db_len-1).bit_length()*4 if not new_slot_amount else new_slot_amount # New slot amount is next power of two starting from current db length times four
-
+        target_slots = db_len*4 if not new_slot_amount else new_slot_amount
         if target_slots == self.slots:
             self.log("RESCALE: Rescale cancelled. Already at target slot amount.")
             return
@@ -129,7 +140,7 @@ class Database:
 
         rescale_db_path = f"rescale_{rescale_job_id}.rasp2"
 
-        build(rescale_db_path, self.name, target_slots, self.keysize, index_size_bytes)
+        build(rescale_db_path, self.name, self._struc_raw, target_slots, self.keysize, self.indexsize)
 
         rescale_db = Database(rescale_db_path, {"logger_enabled":False})
         rescale_db_accessor = Accessor(rescale_db)
@@ -154,6 +165,16 @@ class Database:
         self.log("RESCALE: Deleting rescale db")
         os.remove(rescale_db_path)
 
+        self.slots = target_slots
+
+        health_after = self.health
+
+        improvement = health_after-health_before
+
+        self.log(f"RESCALE: Health before: {health_before}, health after : {health_after}, improvement: {improvement}")
+
+        return improvement
+
     @property
     def health(self):
 
@@ -168,16 +189,22 @@ class Accessor:
     def __init__(self,database):
 
         self.db = database
+        self.db.accessors.append(self)
 
-        self.db.log("Accessor created.")
+        self.db.log("Accessor created.","DEBUG")
 
         self._file =  open(self.db.location,"rb+")
+
+        self._val_cache = caching.Cache(self.db.config["max_cache_size"])
+        self._health_cache = None
+        self._len_cache = None
 
         self.closed = False
 
     def close(self):
 
         self.closed = True
+        self.db.accessors.remove(self)
         self._file.close()
 
     def all_keys(self):
@@ -202,9 +229,14 @@ class Accessor:
         self._file.write(key.encode("ascii")+(self.db.keysize-len(key))*b"\x00")
         self._file.write(data)
 
+        self._val_cache.set(key,data)
+
     def delete(self,key):
 
         self.db.log(f"DELETE {key}","DEBUG")
+
+        self._len_cache = None
+        self._health_cache = None
 
         slot_index = self.db.get_slot_index(key)
 
@@ -279,9 +311,14 @@ class Accessor:
 
                             cur_dataindex = collided_index
 
+        self._val_cache.invalidate(key)
+
     def set(self,key,data):
 
         self.db.log(f"SET {key}","DEBUG")
+
+        self._len_cache = None
+        self._health_cache = None
 
         comp_data = self.db.structure.compile(data)
 
@@ -374,6 +411,10 @@ class Accessor:
     def get(self,key):
 
         self.db.log(f"GET {key}","DEBUG")
+
+        if self._val_cache.has(key):
+
+            return self.db.structure.fetch(self._val_cache.get(key))
 
         slot_index = self.db.get_slot_index(key)
 
@@ -537,7 +578,7 @@ class Accessor:
         eg. You're looking for all posts with less than 20 likes
                 db.find("likes","less than",20)
 
-        Some symbol versions of the operators are also included like: %, <, >, <=, == or = , ...
+        Some symbol versions of the operators are also included like: <, >, <=, == or = , ...
 
         This also means that the ' in ' operator doesn't check wether the provided value is in the value in the database but it checks wether the database value is in the provided value.
         eg. You're looking for all entries whose title is in a list of books
@@ -721,6 +762,9 @@ class Accessor:
 
         self.db.log("LENGTH","DEBUG")
 
+        if self._len_cache is not None:
+            return self._len_cache
+
         start_pos = self.db.data_location+1
 
         self._file.seek(start_pos)
@@ -740,6 +784,8 @@ class Accessor:
             cur_pos += self.db.entry_size
             self._file.seek(cur_pos)
 
+        self._len_cache = length
+
         return length
 
     @property
@@ -751,6 +797,9 @@ class Accessor:
     def health(self):
 
         self.db.log("HEALTH","DEBUG")
+
+        if self._health_cache is not None:
+            return self._health_cache
 
         start_pos = self.db.data_location+1
 
@@ -777,9 +826,13 @@ class Accessor:
             self._file.seek(cur_pos)
 
         try:
-            return (1-collided/(not_collided+collided))*100
+            health = (1-collided/(not_collided+collided))*100
         except ZeroDivisionError:
-            return 100
+            health =  100
+
+        self._health_cache = health
+
+        return health
 
 class WrongMagicNum(Exception):
 
