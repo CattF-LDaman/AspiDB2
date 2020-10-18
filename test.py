@@ -5,7 +5,7 @@ import random
 
 def test():
 
-    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"size":1},True))
 
     database.build("TestDB.asp2", "TestDB", test_struc)
 
@@ -25,7 +25,7 @@ def test():
 
 def find_test():
 
-    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"size":1},True))
 
     database.build("TestDB.asp2", "TestDB", test_struc)
 
@@ -41,7 +41,7 @@ def find_test():
 
 def threaded_test():
 
-        test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+        test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"size":1},True))
 
         database.build("TestDB.asp2", "TestDB", test_struc)
 
@@ -72,7 +72,7 @@ def threaded_test():
 
 def extra_test():
 
-        test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+        test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"size":1},True))
 
         database.build("TestDB.asp2", "TestDB", test_struc)
 
@@ -93,7 +93,7 @@ def extra_test():
 
 def large_test():
 
-    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"bitsize":8},True))
+    test_struc = (("firstname","UnicodeString",{"size":64},False),("lastname","UnicodeString",{"size":128},False),("age","IntUnsigned",{"size":1},True))
 
     database.build("TestDB.asp2", "TestDB", test_struc, 11000)
 

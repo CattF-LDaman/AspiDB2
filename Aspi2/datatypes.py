@@ -48,11 +48,11 @@ class Datatype:
 
 class IntUnsigned(Datatype):
 
-    def __init__(self,bitsize=32):
+    def __init__(self,size=1):
 
         self.real_type = int
 
-        self.bytesize = int(bitsize/8)
+        self.bytesize = size
 
     def _compiler(self,nb):
 
@@ -72,11 +72,11 @@ class IntUnsigned(Datatype):
 
 class IntSigned(Datatype):
 
-    def __init__(self,bitsize=32):
+    def __init__(self,size=1):
 
         self.real_type = int
 
-        self.bytesize = int(bitsize/8)
+        self.bytesize = size
 
     def _compiler(self,nb):
 
@@ -120,7 +120,7 @@ class FixedBytes(Datatype):
 
 class Bytes(Datatype):
 
-    def __init__(self,size):
+    def __init__(self,size=1):
 
         self.real_type = bytes
 
