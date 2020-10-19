@@ -22,7 +22,8 @@ class Cache:
 
     def invalidate(self,key):
 
-        self._i.pop(key)
+        if key in self._i:
+            self._i.pop(key)
 
     def get(self,key):
 
