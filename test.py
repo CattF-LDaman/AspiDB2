@@ -123,14 +123,26 @@ def large_test():
 
     print(db_accessor.find("firstname", "has", "Jo"))
 
-    def filt(x1,x2):
-        if x1 == 35:
-            return True
-
-    print(db_accessor.find("age",filt,None))
-
     db.rescale()
+
+def dataset_test():
+
+    dataset_struc = (("Gemeente","UnicodeString",{"size":256},False),("Naam","UnicodeString",{"size":128},False))
+
+    #database.build("TestDB.asp2", "DatasetNamen", dataset_struc, 775056)
+
+    db = database.Database("TestDB.asp2")
+
+    db_accessor  = database.Accessor(db)
+
+    #with open("test_dataset.txt","r", encoding="cp1252") as f:
+    #    for linen,line in enumerate(f.readlines()):
+    #        s = line.split("|")
+    #        db_accessor.set(str(linen),{"Gemeente":s[1], "Naam":s[3]})
+
+    print(db_accessor.health)
+    print(db_accessor.get(db_accessor.find("Gemeente","is","Jabbeke","first")))
 
 if __name__ == "__main__":
 
-    large_test()
+    dataset_test()
