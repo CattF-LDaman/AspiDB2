@@ -593,7 +593,7 @@ class Accessor:
         Returns a list of keys
         """
 
-        op = find_operators.default[operator.strip().lower()] if operator.strip().lower() in find_operators.default else operator
+        op = find_operators.default[operator.strip().lower()] if not callable(operator) and type(operator) == str else operator
 
         start_pos = self.db.data_location+1
 
@@ -642,7 +642,7 @@ class Accessor:
 
         """
 
-        op = find_operators.default[operator.strip()] if operator.strip() in find_operators.default else operator
+        op = find_operators.default[operator.strip().lower()] if not callable(operator) and type(operator) == str else operator
 
         start_pos = self.db.data_location+1
 

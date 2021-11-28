@@ -123,6 +123,12 @@ def large_test():
 
     print(db_accessor.find("firstname", "has", "Jo"))
 
+    def filt(x1,x2):
+        if x1 == 35:
+            return True
+
+    print(db_accessor.find("age",filt,None))
+
     db.rescale()
 
 if __name__ == "__main__":

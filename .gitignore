@@ -1,5 +1,6 @@
 #Project
-.DS_Store/
+.DS_Store
+TestDB_backups
 TestDB.asp2
 logs/
 *_logs/
