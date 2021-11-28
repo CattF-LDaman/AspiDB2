@@ -228,6 +228,7 @@ class Accessor:
         self._file.write(len(key).to_bytes(self.db.keysize_bytesize,'little'))
         self._file.write(key.encode("ascii")+(self.db.keysize-len(key))*b"\x00")
         self._file.write(data)
+        self._file.flush()
 
         self._val_cache.set(key,data)
 
